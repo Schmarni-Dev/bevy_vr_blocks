@@ -1,34 +1,42 @@
 //! A simple 3D scene with light shining over a cube sitting on a plane
 
 use crate::cube_creation::CubeCreationPlugin;
+use avian3d::prelude::*;
 use bevy::audio::{PlaybackMode, Volume};
 use bevy::prelude::*;
 use bevy_embedded_assets::EmbeddedAssetPlugin;
-use bevy_mod_openxr::{add_xr_plugins, init::OxrInitPlugin, types::OxrExtensions};
-use avian3d::prelude::*;
+use bevy_mod_openxr::features::handtracking::HandTrackingPlugin;
 use bevy_mod_openxr::session::OxrSession;
+use bevy_mod_openxr::{add_xr_plugins, init::OxrInitPlugin, types::OxrExtensions};
 use bevy_mod_xr::hands::HandBoneRadius;
+use hand_velocities::{CustomHandTrackingPlugin, XrVelocity};
 
 pub mod cube_creation;
+pub mod hand_velocities;
 
 #[bevy_main]
 pub fn main() {
     let mut app = App::new();
-    app.add_plugins(add_xr_plugins(DefaultPlugins).set(OxrInitPlugin {
-        app_info: default(),
-        exts: {
-            let mut exts = OxrExtensions::default();
-            exts.enable_fb_passthrough();
-            exts.enable_hand_tracking();
-            //exts.enable_custom_refresh_rates();
-            exts
-        },
-        blend_modes: default(),
-        backends: default(),
-        formats: default(),
-        resolutions: default(),
-        synchronous_pipeline_compilation: default(),
-    }))
+    app.add_plugins(
+        add_xr_plugins(DefaultPlugins)
+            .set(OxrInitPlugin {
+                app_info: default(),
+                exts: {
+                    let mut exts = OxrExtensions::default();
+                    // exts.enable_fb_passthrough();
+                    exts.enable_hand_tracking();
+                    //exts.enable_custom_refresh_rates();
+                    exts
+                },
+                blend_modes: default(),
+                backends: default(),
+                formats: default(),
+                resolutions: default(),
+                synchronous_pipeline_compilation: default(),
+            })
+            .disable::<HandTrackingPlugin>(),
+    )
+    .add_plugins(CustomHandTrackingPlugin)
     // System for requesting refresh rate ( should refactor and upstream into bevy_openxr )
     //.add_systems(Update, set_requested_refresh_rate)
     // Our plugins
@@ -47,7 +55,7 @@ pub fn main() {
         brightness: 500.0,
     })
     .insert_resource(Msaa::Off)
-    .insert_resource(ClearColor(Color::NONE))
+    // .insert_resource(ClearColor(Color::NONE))
     .run();
 }
 
@@ -85,9 +93,11 @@ fn hand_collider(
     mut commands: Commands,
 ) {
     for (entity, radius) in &query {
-        commands
-            .entity(entity)
-            .insert((Collider::sphere(radius.0), RigidBody::Kinematic, ColliderDensity(10.0)));
+        commands.entity(entity).insert((
+            Collider::sphere(radius.0),
+            RigidBody::Kinematic,
+            ColliderDensity(10.0),
+        ));
     }
 }
 
